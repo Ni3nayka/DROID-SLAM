@@ -239,3 +239,12 @@ python view_reconstruction.py outputs/my_map_04_2.pth
 Проверка перекрытия: `outputs/live_occlusion_test/`.
 Физическая USB/IP-камера пока не проверялась; захват, отключение и зависание
 источника проверяются автоматическими тестами с подмененным источником.
+
+
+.venv/bin/python live_localize.py \
+  --map outputs/my_map_04_2.pth \
+  --video input/20261003_145134.mp4 \
+  --calib calib/sasung_cam_calibrated.txt \
+  --calib-size 1280 720 \
+  --output outputs/live_20261003_145134 \
+  --view --preview --overwrite
