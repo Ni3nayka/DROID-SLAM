@@ -157,4 +157,5 @@ data
 figures/*.pdf
 
 /output
+/outputs
 /input
