@@ -147,5 +147,31 @@ CUDA_VISIBLE_DEVICES=0 python demo.py \
   --reconstruction_path=outputs/my_map_05_2.pth
 
 # visualisation
-python view_reconstruction.py outputs/my_map_05.pth
+python view_reconstruction.py outputs/my_map_06_5.pth
+python view_reconstruction.py outputs/my_map_04_2.pth
+```
+
+## localisation
+```bash
+.venv/bin/python view_localization.py \
+  --trajectory outputs/localization_my_map_04/trajectory.csv \
+  --show-video
+```
+
+## localisation: 20261003_145134.mp4
+```bash
+# Локализация нового видео по существующей карте.
+# Для повторной записи результата в ту же папку добавь --overwrite.
+.venv/bin/python localize.py \
+  --map outputs/my_map_04_2.pth \
+  --video input/20261003_145134.mp4 \
+  --calib calib/sasung_cam_calibrated.txt \
+  --calib-size 1280 720 \
+  --output outputs/localization_20261003_145134 \
+  --diagnostic-every 30
+
+# Просмотр новой траектории на карте с исходным видео.
+.venv/bin/python view_localization.py \
+  --trajectory outputs/localization_20261003_145134/trajectory.csv \
+  --show-video
 ```

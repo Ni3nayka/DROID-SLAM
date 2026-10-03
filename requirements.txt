@@ -10,3 +10,4 @@ gdown
 tensorboard
 opencv-python
 pyyaml
+av>=14

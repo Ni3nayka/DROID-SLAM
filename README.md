@@ -248,5 +248,146 @@ python train.py --datapath=<path to tartanair> --gpus=4 --lr=0.00025
 ```
 
 
+## Localization in a saved map
+
+`localize.py` estimates the camera pose for each frame of another video in the
+coordinate system of an existing `--reconstruction_path` map. It uses SIFT map
+landmarks, PnP/RANSAC, optical-flow tracking and periodic global matching. The
+localizer runs on CPU and does not import DROID's CUDA extensions or model weights.
+
+Install the video decoder in the existing environment:
+
+```bash
+source .venv/bin/activate
+python -m pip install 'av>=14'
+```
+
+Example using the calibrated map in this workspace:
+
+```bash
+python localize.py \
+  --map outputs/my_map_04_2.pth \
+  --video input/20260810_162724.mp4 \
+  --calib calib/sasung_cam_calibrated.txt \
+  --output outputs/localization_my_map_04
+```
+
+For a second recording, replace `--video` and select a new output directory. Use
+`--max-frames 90` for a short check, or `--start 10 --end 15` for an interval.
+Frame indices and times still refer to the original video. Existing results are
+protected; replacing a run requires `--overwrite`.
+
+Outputs:
+
+* `trajectory.csv`: one row per processed frame. `frame_index` starts at zero;
+  `timestamp_sec` is presentation time relative to the first decoded frame.
+  Original `pts`, `time_base` and `timestamp_source` are also retained.
+* `x,y,z`: camera optical center in map coordinates. Monocular map units are
+  arbitrary, not automatically metres. `--scale S` scales exported positions;
+  determine S from an independent known distance if metres are required.
+* `qx,qy,qz,qw`: camera-to-world orientation. Camera axes are right, down, forward.
+* `status`: `localized`, `relocalized` after recovery, or `lost`. Lost frames have
+  `nan` coordinates and orientation. No missing poses are silently interpolated.
+* Quality columns: `inliers`, `matches`, `inlier_ratio`, median
+  `reprojection_error_px`, image `coverage`, `reference_ids`, `method`, and `reason`.
+* `metadata.json`: map/input hashes, calibration, conventions and run settings.
+* `report.json`: coverage, lost intervals, reprojection errors, processing speed
+  and completion/error state. Interrupted/failed runs retain their partial CSV.
+
+Video decoding preserves variable frame-rate PTS. Missing or decreasing timestamps
+are errors by default; `--allow-fps-fallback` explicitly permits labelled approximate
+times when PTS is missing. Decode errors stop the run and mark it incomplete.
+
+Calibration must correspond to the camera/lens, crop and zoom used for the new
+recording. Parameters refer to the displayed image orientation; quarter-turn
+display metadata is applied before calibration. `--rotation 0` ignores this
+rotation, and `--rotation 90/180/270` overrides it counterclockwise. Mirrored
+display transforms are rejected unless explicitly overridden. If only resolution
+changed, pass `--calib-size WIDTH HEIGHT` for the calibration's original resolution.
+The preprocessor corrects distortion, resizes using the demo's image-area rule,
+crops the bottom/right to multiples of eight, and updates intrinsics accordingly.
+
+The DROID loader reads full-resolution `disps` as inverse depth, multiplies stored
+intrinsics by eight, and inverts world-to-camera poses when lifting landmarks.
+SIFT features are cached in `.cache/localization`, keyed by map content, extractor
+configuration and OpenCV version. `--no-cache` disables this cache.
+
+`--independent` performs global matching on every frame, useful for evaluating
+localization without tracking. The default tracks 2D observations of fixed 3D
+landmarks, refreshes matches every 10 frames and globally checks every 60 frames.
+Tracking failures trigger global search. Geometrically incompatible place
+hypotheses with comparable support are rejected. Thresholds in `--help` are
+starting values, not guarantees of physical accuracy; repetitive/changed scenes
+can still produce incorrect poses.
+
+Single-image check and frame diagnostics:
+
+```bash
+python localize.py --map outputs/my_map_04_2.pth \
+  --image data/my_map_04/frames/000100.jpg \
+  --calib calib/sasung_cam_calibrated.txt \
+  --output outputs/localization_image --diagnostic-every 1
+```
+
+`--preview` opens a frame window; `--diagnostic-every 150` saves annotated JPEGs
+without a GUI. Green points are geometric inliers and red segments show residuals
+between observed and projected points.
+
+View the original map (blue trajectory) and the localized video (red trajectory):
+
+```bash
+python view_localization.py \
+  --trajectory outputs/localization_my_map_04/trajectory.csv --show-video
+```
+
+Use N/P to move between rows, Space to play/pause, and the mouse to inspect the
+cloud. `--frame 300` chooses an initial original video frame; `--step 10` changes
+the N/P increment. Lost intervals remain gaps. Both viewers use the **same**
+reconstruction builder, CUDA multi-view depth filter, reference-camera frustums
+and render settings. This viewer requires CUDA like `view_reconstruction.py`;
+the localization calculation itself still runs on CPU. Defaults are
+`--cloud-stride 2 --filter-threshold 0.005 --filter-count 3`, matching the original
+viewer. For geometry export without a graphics window (CUDA is still required):
+
+```bash
+python view_localization.py \
+  --trajectory outputs/localization_my_map_04/trajectory.csv \
+  --no-window --export outputs/localization_my_map_04/geometry
+```
+
+To render and save a view for inspection, use `--screenshot result.png --frame 740`.
+This renders through Open3D in a hidden window and exits; a working display/OpenGL
+context is required. Old PLY exports made with the simplified point-cloud filter
+should be regenerated with the command above.
+
+### Localization checks
+
+```bash
+python -m unittest discover -s tests_localization -v
+```
+
+Tests cover DROID geometry conventions, PnP with outliers, degenerate/ambiguous
+matches, optical flow, loss/reacquisition, calibration preprocessing, variable
+video timestamps, CSV output and gaps in the displayed trajectory.
+
+For a same-session held-out check, replay the **same FPS filter used for mapping**
+and select only source frames whose decoded image was not selected by that filter:
+
+```bash
+python evaluation_scripts/validate_localization.py \
+  --map outputs/my_map_04_2.pth \
+  --video input/20260810_162724.mp4 \
+  --calib calib/sasung_cam_calibrated.txt \
+  --map-fps 10 --samples 30 \
+  --output outputs/localization_my_map_04_heldout
+```
+
+This matches the mapping recipe `ffmpeg -vf fps=10` with default rounding and no
+time trimming. It compares decoded YUV hashes before/after the filter, excluding
+all selected mapping images, not only saved DROID keyframes. Each sampled query
+is localized independently. The report records the selected frame indices and
+annotated images. It does not measure cross-session robustness or metric pose
+accuracy; those require another recording and independent reference measurements.
+
 ## Acknowledgements
 Data from [TartanAir](https://theairlab.org/tartanair-dataset/) was used to train our model. We additionally use evaluation tools from [evo](https://github.com/MichaelGrupp/evo) and [tartanair_tools](https://github.com/castacks/tartanair_tools).
