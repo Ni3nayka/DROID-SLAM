@@ -389,5 +389,111 @@ is localized independently. The report records the selected frame indices and
 annotated images. It does not measure cross-session robustness or metric pose
 accuracy; those require another recording and independent reference measurements.
 
+### Real-time localization in the saved map
+
+The separate `live_localize.py` entry point accepts a camera or replays a video
+at its original PTS cadence. The offline `localize.py`, reconstruction tools,
+held-out evaluator and saved-trajectory viewer keep their existing behavior.
+
+```bash
+python live_localize.py \
+  --map outputs/my_map_04_2.pth \
+  --video input/20261003_145134.mp4 \
+  --calib calib/sasung_cam_calibrated.txt --calib-size 1280 720 \
+  --output outputs/live_20261003_145134 --view --preview
+```
+
+Use `--camera 0` instead of `--video ...` for a USB camera, or
+`--camera 'rtsp://HOST:PORT/PATH'` for an RTSP stream (HTTP streams also use
+OpenCV's FFmpeg backend). `--capture-size 1280 720 --capture-fps 30` requests
+camera settings; backend support and the actual settings appear in metadata.
+Use calibration for the actual camera/lens, crop, orientation and zoom. The
+Samsung calibration in the example applies to that camera, not an arbitrary USB
+camera. For streams without rotation metadata, specify `--rotation` if needed.
+
+Omit `--view --preview` to run without a GUI. Localization uses CPU; the optional
+3D viewer uses CUDA and the **same dense reconstruction, multi-view depth filter
+and render settings** as `view_reconstruction.py`. Map geometry is built once in
+the GUI process. Yellow is the current camera, red is its recent path, blue is
+the original map trajectory. Invalid/expired poses hide the yellow camera and
+break the red path. The GUI keeps at most 2,000 path points. Esc in the frame
+window, closing the 3D window, or Ctrl-C stops streaming. `--duration 10` and
+`--max-frames 300` provide bounded runs. `--view-screenshot PATH.png` renders the
+first valid live pose in a hidden 3D window; it still requires a display.
+
+Implementation:
+
+* Continuous capture replaces a single unread frame instead of building a
+  backlog. Dropped frames are counted. File replay waits for each frame's PTS.
+* The fast thread tracks fixed map landmarks with forward/backward pyramidal
+  LK and geometrically checked PnP, reusing the offline tracker's flow code.
+* A spawned process owns the SIFT map index. At most one matching job is active;
+  after completion the next request uses the newest processed image. Local
+  matching is requested every 0.3 s and global verification every 2 s, subject
+  to worker availability. Initialization and loss trigger global matching.
+* A match refers to its original frame ID and tracking generation. The tracker
+  propagates its associations to the current image and re-estimates PnP before
+  publishing. If direct flow fails, it tries the bounded image history. Missing
+  anchors, expired results and exceeded catch-up budgets are rejected. A pose
+  conflicting with valid tracking causes loss and a fresh global search.
+* A bounded logging thread and a separate GUI process keep disk and rendering
+  work off the tracking path. GUI updates may be skipped under load; the CSV
+  logger fails explicitly if its 128-record queue fills.
+
+Live states are `INITIALIZING`, `TRACKING`, `LOST`, `STALE`, `STOPPED`, `ERROR`.
+The initial frames normally have no pose while the first global search runs.
+Loss is reported with null coordinates, never with a frozen last pose. With
+default settings, a frame/pose expires after 150 ms, a tracking gap over 250 ms
+resets tracking, and tracking without an accepted map verification expires
+after 3 s. No incoming frames for 5 s, stream disconnection, a failed worker or
+logging failure ends the run with an explicit error. Restart the command after
+reconnecting a failed camera. These timeouts and the matching/history budgets
+are configurable in `--help`.
+
+Output files:
+
+* `trajectory.csv`, `metadata.json`, `report.json` retain the offline formats,
+  so `view_localization.py --trajectory .../trajectory.csv` also works for live
+  runs. There is a row for each **processed** frame, with original frame IDs;
+  skipped capture frames are not reconstructed or interpolated. `--show-video`
+  works for file replay; camera streams are not recorded by this command.
+* `poses.jsonl` records each processed frame's pose, timing and state, plus
+  state events such as staleness and shutdown. Position and quaternion are
+  null for invalid poses. Coordinates are map units and camera-to-world `xyzw`.
+* `latest_pose.json` is replaced atomically by the logger for integration with
+  another local application. Check **both** `valid` and
+  `time.monotonic() <= valid_until_monotonic` when consuming it, even if the
+  publisher has stopped responding. Monotonic timestamps are comparable only
+  on the same machine/boot. Disk publication can be later than pose computation;
+  the deadline still applies. A consumer needing an in-process interface can
+  use `LiveTracker.process_frame(...)` and `pose_message(...)` directly.
+* `realtime_report.json` adds frame drops, initialization-independent stream
+  throughput, processing/age percentiles, matcher timings and rejection counts.
+  Timing statistics use the latest 10,000 processed frames/results; reprojection
+  and inlier medians use the latest 10,000 valid poses. Counts and CSV/JSONL
+  records cover the full run. Startup is measured separately.
+
+For camera inputs, timestamps and age start when `VideoCapture.read()` returns;
+they do **not** measure exposure-to-host or network buffering latency. For file
+replay, age starts at the scheduled presentation time, so late decoding remains
+visible. `CAP_PROP_BUFFERSIZE` is only a backend-dependent request; continuous
+capture guarantees a bounded application queue, not a device's internal queue.
+Frame processing speed alone is not a pose accuracy measurement.
+
+```python
+import json
+import time
+from pathlib import Path
+
+packet = json.loads(Path("outputs/live_20261003_145134/latest_pose.json").read_text())
+if packet["valid"] and time.monotonic() <= packet["valid_until_monotonic"]:
+    print(packet["frame_index"], packet["position"], packet["quaternion_xyzw"])
+```
+
+Real-time tests are included in `python -m unittest discover -s tests_localization -v`:
+delayed matching and current-frame pose recovery, stale/missing anchors, bounded
+capture, PTS pacing, loss/reacquisition, conflicting map corrections, verification
+expiry, camera disconnection, and asynchronous logging compatibility.
+
 ## Acknowledgements
 Data from [TartanAir](https://theairlab.org/tartanair-dataset/) was used to train our model. We additionally use evaluation tools from [evo](https://github.com/MichaelGrupp/evo) and [tartanair_tools](https://github.com/castacks/tartanair_tools).

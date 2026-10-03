@@ -75,7 +75,10 @@ class VideoReader:
                 if rotation % 90:
                     raise ValueError("Only quarter-turn display rotations are supported")
                 if self.rotation is None:
-                    for side in frame.side_data:
+                    for item in frame.side_data:
+                        # PyAV 19 iterates side-data type keys; older versions
+                        # yielded SideData objects. Handle both representations.
+                        side = item if hasattr(item, "type") else frame.side_data[item]
                         if "DISPLAYMATRIX" in str(side.type):
                             matrix = np.frombuffer(bytes(side), dtype=np.int32).reshape(3, 3)
                             if np.linalg.det(matrix[:2, :2].astype(float)) < 0:
