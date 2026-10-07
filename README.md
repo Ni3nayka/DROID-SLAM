@@ -495,5 +495,16 @@ delayed matching and current-frame pose recovery, stale/missing anchors, bounded
 capture, PTS pacing, loss/reacquisition, conflicting map corrections, verification
 expiry, camera disconnection, and asynchronous logging compatibility.
 
+## ROS 2 localization
+
+The `droid_slam` package under [`ros/droid_slam`](ros/droid_slam/README.md)
+adapts the existing real-time localizer to ROS 2 Jazzy. It accepts camera images
+and factory `CameraInfo` or a calibration file, displays the full reconstruction,
+and publishes localization status, with optional metric pose/TF after map scale
+calibration. It includes calibration read from the connected D435, a video
+publisher, and ROS integration tests. Build, launch, camera serial details and
+coordinate conventions are documented in the [package guide](ros/droid_slam/README.md).
+Existing standalone commands remain available.
+
 ## Acknowledgements
 Data from [TartanAir](https://theairlab.org/tartanair-dataset/) was used to train our model. We additionally use evaluation tools from [evo](https://github.com/MichaelGrupp/evo) and [tartanair_tools](https://github.com/castacks/tartanair_tools).

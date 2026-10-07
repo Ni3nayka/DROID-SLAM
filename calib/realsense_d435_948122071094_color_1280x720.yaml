@@ -1,0 +1,72 @@
+{
+  "image_width": 1280,
+  "image_height": 720,
+  "camera_name": "d435_948122071094_color",
+  "distortion_model": "plumb_bob",
+  "camera_matrix": {
+    "rows": 3,
+    "cols": 3,
+    "data": [
+      916.6323852539062,
+      0.0,
+      661.09326171875,
+      0.0,
+      915.2207641601562,
+      371.719970703125,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "distortion_coefficients": {
+    "rows": 1,
+    "cols": 5,
+    "data": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "rectification_matrix": {
+    "rows": 3,
+    "cols": 3,
+    "data": [
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "projection_matrix": {
+    "rows": 3,
+    "cols": 4,
+    "data": [
+      916.6323852539062,
+      0.0,
+      661.09326171875,
+      0.0,
+      0.0,
+      915.2207641601562,
+      371.719970703125,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0
+    ]
+  },
+  "device_serial": "948122071094",
+  "asic_serial": "948123023494",
+  "sdk_distortion_model": "distortion.inverse_brown_conrady",
+  "firmware_version": "5.17.0.10",
+  "fps": 30,
+  "source": "Factory calibration read from connected device via librealsense",
+  "captured_utc": "2026-10-07T12:09:53.178986+00:00"
+}

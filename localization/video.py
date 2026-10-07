@@ -100,7 +100,17 @@ class VideoReader:
 
 class Preprocessor:
     def __init__(self, calib_path, calibration_size=None, pixels=384 * 512):
-        self.values = np.loadtxt(calib_path).reshape(-1).astype(np.float64)
+        self._configure(np.loadtxt(calib_path), calibration_size, pixels)
+
+    @classmethod
+    def from_values(cls, values, calibration_size=None, pixels=384 * 512):
+        """Use an in-memory calibration (e.g. ROS CameraInfo), with identical preprocessing."""
+        instance = cls.__new__(cls)
+        instance._configure(values, calibration_size, pixels)
+        return instance
+
+    def _configure(self, values, calibration_size, pixels):
+        self.values = np.asarray(values, dtype=np.float64).reshape(-1).copy()
         if (len(self.values) not in (4, 8, 9, 12, 16, 18)
                 or not np.isfinite(self.values).all() or np.any(self.values[:2] <= 0)):
             raise ValueError("Calibration must contain fx fy cx cy and 0/4/5/8/12/14 distortion coefficients")

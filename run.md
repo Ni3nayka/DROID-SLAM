@@ -187,6 +187,15 @@ python view_reconstruction.py outputs/my_map_04_2.pth
 ## realTime: видео в реальном темпе и камера
 
 ```bash
+.venv/bin/python live_localize.py \
+  --map outputs/my_map_04_2.pth \
+  --video input/20261003_145134.mp4 \
+  --calib calib/sasung_cam_calibrated.txt \
+  --calib-size 1280 720 \
+  --output outputs/live_20261003_145134 \
+  --view --preview --overwrite
+
+
 # Тест: кадры подаются с исходной частотой по PTS.
 # Желтая камера движется по той же полной карте, что в view_reconstruction.
 # Повторный запуск в ту же папку: добавь --overwrite.
@@ -245,10 +254,12 @@ python view_reconstruction.py outputs/my_map_04_2.pth
 Основной отчет: `outputs/live_20261003_145134/realtime_report.json`.
 Прогон с окнами: `outputs/live_20261003_145134_gui/`.
 Проверка перекрытия: `outputs/live_occlusion_test/`.
-Физическая USB/IP-камера пока не проверялась; захват, отключение и зависание
-источника проверяются автоматическими тестами с подмененным источником.
+Для этого standalone-прогона физическая USB/IP-камера не проверялась;
+захват, отключение и зависание источника покрыты тестами с подмененным источником.
+Проверка реальной D435 через ROS описана ниже.
 
 
+```bash
 .venv/bin/python live_localize.py \
   --map outputs/my_map_04_2.pth \
   --video input/20261003_145134.mp4 \
@@ -256,3 +267,57 @@ python view_reconstruction.py outputs/my_map_04_2.pth
   --calib-size 1280 720 \
   --output outputs/live_20261003_145134 \
   --view --preview --overwrite
+```
+
+## ROS 2 Jazzy: D435 и готовая карта
+
+Полная инструкция, параметры и тесты: [ros/droid_slam/README.md](ros/droid_slam/README.md).
+Команды ниже выполняются из корня этого репозитория.
+
+```bash
+# Один раз собрать пакет droid_slam.
+source /opt/ros/jazzy/setup.bash
+colcon --log-base ros/log build --base-paths ros/droid_slam \
+  --build-base ros/build --install-base ros/install --symlink-install
+```
+
+```bash
+# Терминал 1: существующий драйвер из IRS-DRIVERS.
+# 948123023494 — ASIC serial; serial_no драйвера требует DEVICE serial ниже.
+source /opt/ros/jazzy/setup.bash
+source ../IRS-DRIVERS/install/setup.bash
+ros2 launch realsense driver.launch.py model:=d435 serial_no:=948122071094
+```
+
+```bash
+# Терминал 2: локализация + полная 3D-карта + текущий кадр.
+source /opt/ros/jazzy/setup.bash
+source ros/install/setup.bash
+ros2 launch droid_slam localization.launch.py \
+  map_path:="$PWD/outputs/my_map_04_2.pth" \
+  image_topic:=/camera/color/image_raw \
+  camera_info_topic:=/camera/color/camera_info \
+  save_calibration_path:="$PWD/outputs/d435_camera_info.yaml" \
+  output_dir:="$PWD/outputs/ros_d435"
+```
+
+Калибровка автоматически приходит от самой камеры. Для явного файла добавьте
+`calib_path:="$PWD/calib/realsense_d435_948122071094_color_640x480.yaml"`
+при потоке 640×480. Заводской файл для 1280×720 также сохранён в `calib/`.
+При повторной записи результата добавьте `overwrite:=true` или смените каталог.
+Остановка — Ctrl-C или закрытие GUI. После перезапуска драйвера нода автоматически
+продолжает обработку. Для позы камера должна видеть участок существующей карты.
+
+По умолчанию координаты в единицах карты доступны в `/droid_slam/status` (JSON)
+и GUI. Для метрического `/droid_slam/pose` задайте измеренный `scale_to_meters`;
+TF включается отдельно через `publish_tf:=true`. Новая камера и depth-поток
+не определяют метрический масштаб ранее построенной монокулярной карты.
+
+Проверено: 42 автоматических теста; реальная D435 с GUI и перезапуском драйвера;
+ROS-видео — 378 кадров без пропусков, 369 поз после начального поиска, p95 от
+timestamp кадра до публикации 34,2 мс. Прежний офлайн-CSV совпал побайтно.
+Отчёты: `outputs/ros_replay_final/ros_report.json` и
+`outputs/ros_d435_reconnect_final/validation.json`.
+Во время аппаратного теста D435 смотрела на помещение вне карты, поэтому
+поза на физической камере оставалась неопределённой. Для её проверки в этой
+карте камеру нужно перенести в картографированное место.

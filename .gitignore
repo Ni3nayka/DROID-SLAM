@@ -159,3 +159,9 @@ figures/*.pdf
 /output
 /outputs
 /input
+
+# Local ROS 2 workspace products (source remains under ros/droid_slam).
+/ros/build/
+/ros/install/
+/ros/log/
+/ros/log_bag/

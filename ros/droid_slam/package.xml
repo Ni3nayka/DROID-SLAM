@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>droid_slam</name>
+  <version>0.1.0</version>
+  <description>Real-time localization of ROS camera images in a saved DROID-SLAM reconstruction.</description>
+  <maintainer email="53381511+Ni3nayka@users.noreply.github.com">Ni3nayka</maintainer>
+  <license>BSD-3-Clause</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>tf2_msgs</test_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
