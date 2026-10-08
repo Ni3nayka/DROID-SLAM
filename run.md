@@ -77,11 +77,11 @@ ffprobe -v error \
   ~/Yandex.Disk/20260810_140239.mp4
 
 # video => img (10 fps)
-ffmpeg -i ~/Yandex.Disk/20260810_140239.mp4 \
-  -vf "fps=10" \
+ffmpeg -i input/20261007_cam_image_rgb.mp4 \
+  -vf "fps=30" \
   -q:v 2 \
   -start_number 0 \
-  data/my_map_01/frames/%06d.jpg
+  data/my_map_07/frames/%06d.jpg
 
 # video => img (original fps)
 ffmpeg -i ~/Videos/map_flight.mp4 \
@@ -112,13 +112,18 @@ python demo.py \
   --reconstruction_path=outputs/my_map_01.pth
 
 # without GUI (if memory out)
+# my_map_07: RealSense D435 RGB 640x480, factory calibration in demo.py text format.
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-python demo.py \
-  --imagedir=data/my_map_04/frames \
-  --calib=calib/sasung_cam.txt \
+.venv/bin/python demo.py \
+  --imagedir=data/my_map_07/frames \
+  --calib=calib/realsense_d435_948122071094_color_640x480.txt \
   --stride=1 \
   --disable_vis \
-  --reconstruction_path=outputs/my_map_04.pth
+  --reconstruction_path=outputs/my_map_07.pth
+
+# Более удачная пересборка my_map_07 с настройками my_map_06_5:
+# полная команда и сравнение находятся в draft.md, раздел "my_map_07 с настройками...".
+.venv/bin/python view_reconstruction.py outputs/my_map_07_best.pth
 
 # without GUI update
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \

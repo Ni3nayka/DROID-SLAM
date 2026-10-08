@@ -1,0 +1,4 @@
+# Factory RGB calibration for D435 device 948122071094, native 640x480 profile.
+# Source: realsense_d435_948122071094_color_640x480.yaml
+# fx fy cx cy k1 k2 p1 p2 k3
+611.0882568359375 610.147216796875 334.06219482421875 247.8133087158203 0 0 0 0 0

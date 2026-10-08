@@ -165,3 +165,5 @@ figures/*.pdf
 /ros/install/
 /ros/log/
 /ros/log_bag/
+
+draft.md
