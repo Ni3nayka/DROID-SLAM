@@ -1,0 +1,4 @@
+# Intel RealSense D435 RGB, device serial 948122071094, native 1280x720 profile.
+# Source: realsense_d435_948122071094_color_1280x720.yaml (factory calibration).
+# fx fy cx cy k1 k2 p1 p2 k3
+916.6323852539062 915.2207641601562 661.09326171875 371.719970703125 0 0 0 0 0
