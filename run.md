@@ -326,3 +326,18 @@ timestamp кадра до публикации 34,2 мс. Прежний офл�
 Во время аппаратного теста D435 смотрела на помещение вне карты, поэтому
 поза на физической камере оставалась неопределённой. Для её проверки в этой
 карте камеру нужно перенести в картографированное место.
+
+
+```bash
+source /home/test/droid-runtime/activate.sh
+python view_reconstruction.py outputs/my_map_08/reconstruction.pth
+
+bash /home/test/Documents/GitHub/IRS-MIREA-2026/run_sh/drivers.sh
+
+source /home/test/droid-runtime/activate.sh
+source /opt/ros/jazzy/setup.bash
+source /home/test/Documents/GitHub/DROID-SLAM/ros/install/setup.bash
+export ROS_DOMAIN_ID=10
+ros2 launch droid_slam localization.launch.py \
+  params_file:=/home/test/Documents/GitHub/DROID-SLAM/outputs/readiness_20261119/localization_d435_visual.yaml
+```
